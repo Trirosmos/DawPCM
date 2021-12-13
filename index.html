@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<meta charset="utf8">
+<html>
+    <header>
+        <title> DPCM Processor</title>
+    </header>
+    <body>
+        <input type = "file" id = "fileLoader">Load sample</input>
+        <script type = "text/javascript" src = "dsp.js/dsp.js"></script>
+        <script type = "text/javascript" src = "download.js"></script>
+        <script type = "text/javascript">
+
+        var aCtx = new AudioContext();
+        var node;
+        var buffer;
+
+        function toDPCMOfflines(buff, NTSC, period) {
+            var NTSCPeriods = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54];
+            var PALPeriods = [398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50];
+
+            var sampleTime = NTSC ? 1/(1789773 / (NTSCPeriods[period])) : 1/(1662607  / (PALPeriods[period]));
+
+            var dCounter = 64;
+
+            var dmcData = [0];
+            var deltaT = 0;
+            var bit = 0;
+            var byte = 0;
+            
+            for(x = 0; x < buff.length; x++) {
+                deltaT += 1 / aCtx.sampleRate;
+
+                while(deltaT >= sampleTime) {
+                    deltaT -= sampleTime;
+                    if(buff[x] > ((dCounter / 64) - 1)) {
+                        dmcData[byte] |= (1 << bit);
+                        dCounter += 2;
+                    }
+                    else dCounter -= 2;
+
+                    bit++;
+                    if(bit > 7) {
+                        bit = 0;
+                        byte++;
+                        dmcData.push(0);
+                    }
+                }
+            }
+
+            return {
+                data: dmcData,
+                sampleTime: sampleTime
+            };
+        }
+
+        function toAudioOffline(dpcm) {
+            
+        }
+
+        function bufferToBase64(buf) {
+            var binstr = Array.prototype.map.call(buf, function (ch) {
+                return String.fromCharCode(ch);
+            }).join('');
+            return btoa(binstr);
+        }
+
+        function loadAudio(e) {
+            var reader = new FileReader();
+            reader.readAsArrayBuffer(e.target.files[0]);
+            reader.onload = function(e) {
+                aCtx.decodeAudioData(reader.result,function(e){
+                    buffer = e;
+
+                    var source = aCtx.createBufferSource();
+                    source.buffer = buffer;
+
+                    source.connect(aCtx.destination);
+                    source.start();
+
+                    var dpcmData = toDPCMOfflines(buffer.getChannelData(0),true,15).data;
+                    console.log(dpcmData);
+                    download("data:application/octet-stream;base64," + bufferToBase64(new Uint8Array(dpcmData)),"sample.dmc","application/octet-stream");
+                });
+            }
+        }
+
+        var fileLoader = document.getElementById("fileLoader");
+        fileLoader.onchange = loadAudio;
+            
+        function startAudioContext() {                
+            aCtx.audioWorklet.addModule('sound.js').then(() => {
+            class fmSynth extends AudioWorkletNode {
+                constructor(context) {
+                    super(context, 'fmSynth');
+                }
+            }
+                node = new fmSynth(aCtx);
+            
+                //node.port.postMessage({type: "patchEdit", value: insts});
+            
+                var gain = aCtx.createGain();
+                gain.gain.value = 0.5;
+            
+                node.connect(gain);
+                gain.connect(aCtx.destination);
+            });
+        }
+
+        </script>
+    </body>
+</html>
