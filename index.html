@@ -5,98 +5,185 @@
         <title> DPCM Processor</title>
     </header>
     <body>
-        <input type = "file" id = "fileLoader">Load sample</input>
-        <script type = "text/javascript" src = "dsp.js/dsp.js"></script>
+        <input type = "file" id = "fileLoader"></input>
+        <script type = "text/javascript" src = "utils.js"></script>
+        <script type = "text/javascript" src = "effects.js"></script>
+        <script type = "text/javascript" src = "dpcm.js"></script>
+        <script type = "text/javascript" src = "ui.js"></script>
         <script type = "text/javascript" src = "download.js"></script>
         <script type = "text/javascript">
+
+        document.body.style.height = window.innerHeight + "px";
+        document.body.style.width = window.innerWidth + "px";
 
         var aCtx = new AudioContext();
         var node;
         var buffer;
+        var mouseX = 0;
+        var currentChain = 0;
+        var currentFX = 0;
+        var chains = [];
 
-        function toDPCMOfflines(buff, NTSC, period) {
-            var NTSCPeriods = [428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54];
-            var PALPeriods = [398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50];
+        var chainListDisplay;
+        var fxListDisplay;
+        var fxSettingsDisplay;
 
-            var sampleTime = NTSC ? 1/(1789773 / (NTSCPeriods[period])) : 1/(1662607  / (PALPeriods[period]));
+        function createChain() {
+            chains.push({
+                name: "FX chain " + String(chains.length + 1),
+                effects: []
+            });
+            updateUI();
+        }
 
-            var dCounter = 64;
+        function addGain(value) {
+            if(chains[currentChain] !== undefined) {
+                var gain = {
+                    name: "Gain",
+                    type: "gain",
+                    value: value
+                };
 
-            var dmcData = [0];
-            var deltaT = 0;
-            var bit = 0;
-            var byte = 0;
-            
-            for(x = 0; x < buff.length; x++) {
-                deltaT += 1 / aCtx.sampleRate;
+                chains[currentChain].effects.push(gain);
+                updateUI()
+            }
+        }
 
-                while(deltaT >= sampleTime) {
-                    deltaT -= sampleTime;
-                    if(buff[x] > ((dCounter / 64) - 1)) {
-                        dmcData[byte] |= (1 << bit);
-                        dCounter += 2;
-                    }
-                    else dCounter -= 2;
+        function addIIR(cutoff,lowpass) {
+            if(chains[currentChain] !== undefined) {
+                var iir = {
+                    name: "IIR Filter",
+                    type: "iir",
+                    cutoff: cutoff,
+                    lowpass: lowpass
+                };
+        
+                chains[currentChain].effects.push(iir);
+                updateUI()
+            }
+        }
 
-                    bit++;
-                    if(bit > 7) {
-                        bit = 0;
-                        byte++;
-                        dmcData.push(0);
-                    }
+        function addWaveshape(value) {
+            if(chains[currentChain] !== undefined) {
+                var waveshape = {
+                    name: "Waveshaping Distortion",
+                    type: "waveshape",
+                    hardness: value
+                };
+        
+                chains[currentChain].effects.push(waveshape);
+                updateUI()
+            }
+        }
+
+        function addLim(value) {
+            if(chains[currentChain] !== undefined) {
+                var limiter = {
+                    name: "Brickwall Limiter",
+                    type: "limiter",
+                    threshold: value
+                };
+        
+                chains[currentChain].effects.push(limiter);
+                updateUI()
+            }
+        }
+        
+
+        (function createUI() {
+            var chainDisplay = createE("div");
+            append(chainDisplay);
+            sizePos(chainDisplay,3,55,23,40);
+            chainDisplay.style.border = "solid";
+
+            var fxDisplay = createE("div");
+            append(fxDisplay);
+            sizePos(fxDisplay,28,55,23,40);
+            fxDisplay.style.border = "solid";
+
+            fxSettingsDisplay = createE("div");
+            append(fxSettingsDisplay);
+            sizePos(fxSettingsDisplay,53,55,45,40);
+            fxSettingsDisplay.style.border = "solid";
+
+            chainListDisplay = createE("select");
+            sizePos(chainListDisplay,0,0,100,83);
+            chainDisplay.appendChild(chainListDisplay);
+            chainListDisplay.onchange = function() {
+                currentChain = chainListDisplay.selectedIndex;
+                updateUI();
+            }
+
+            var addChain = createE("button");
+            addChain.innerHTML = "Create new FX chain";
+            addChain.onclick = createChain;
+            sizePos(addChain,0,84,20,15);
+            chainDisplay.appendChild(addChain);
+
+            var deleteChain = createE("button");
+            deleteChain.innerHTML = "Delete FX chain";
+            deleteChain.onclick = function() {
+                var index = chainListDisplay.selectedIndex;
+                if(index !== -1) chains.splice(index,1);
+                updateUI();
+            }
+            sizePos(deleteChain,23,84,20,15);
+            chainDisplay.appendChild(deleteChain);
+
+            fxListDisplay = createE("select");
+            sizePos(fxListDisplay,0,0,100,83);
+            fxDisplay.appendChild(fxListDisplay);
+            fxListDisplay.onchange = function() {
+                currentFX = fxListDisplay.selectedIndex;
+                updateUI();
+            }
+
+            var fxSelect = createE("select");
+            sizePos(fxSelect,25,84,30,15);
+            createOption(fxSelect,["IIR Filter", "Gain", "Brickwall Limiter", "Waveshaping Distortion"]);
+            fxDisplay.appendChild(fxSelect);
+
+            var addFX = createE("button");
+            addFX.innerHTML = "Add FX";
+            sizePos(addFX,0,84,20,15);
+            fxDisplay.appendChild(addFX);
+            addFX.onclick = function() {
+                if(fxSelect.selectedIndex === -1) return;
+
+                switch(fxSelect.options[fxSelect.selectedIndex].innerHTML) {
+                    case "Gain":
+                        addGain(0.5);
+                    break;
+
+                    case "IIR Filter":
+                        addIIR(10000,true);
+                    break;
+
+                    case "Waveshaping Distortion":
+                        addWaveshape(0.5,true);
+                    break;
+
+                    case "Brickwall Limiter":
+                        addLim(-2,true);
+                    break;
                 }
             }
 
-            return {
-                data: dmcData,
-                sampleTime: sampleTime
-            };
-        }
-
-        function toAudioOffline(dpcm) {
-            var deltaT = 0;
-            var dCounter = 0;
-            var bit = 0;
-            var byte = 0;
-
-            var soundData = [];
-
-            for(x = 0; x < dpcm.data.length * 8; x++) {
-                deltaT += dpcm.sampleTime;
-                if(dpcm.data[byte] & (1 << bit)) dCounter += (2/64);
-                else dCounter -= (2/64);
-
-                if(dCounter < -1) dCounter = -1;
-                if(dCounter > 1) dCounter = 1;
-
-                while(deltaT > 1/aCtx.sampleRate) {
-                    deltaT -= 1/aCtx.sampleRate;
-                    soundData.push(dCounter);
-                }
-
-                bit++;
-                if(bit > 7) {
-                    bit = 0;
-                    byte++;
-                }
+            var deleteFX = createE("button");
+            deleteFX.innerHTML = "Delete FX";
+            deleteFX.onclick = function() {
+                var index = fxListDisplay.selectedIndex;
+                if(index !== -1) chains[currentChain].effects.splice(index,1);
+                updateUI();
             }
+            sizePos(deleteFX,60,84,20,15);
+            fxDisplay.appendChild(deleteFX);
 
-            var decodedBuffer = aCtx.createBuffer(1,soundData.length, aCtx.sampleRate);
-            var decodedBufferData = decodedBuffer.getChannelData(0);
-            
-            for(x = 0; x < decodedBufferData.length; x++) {
-                decodedBufferData[x] = soundData[x];
-            }
+            createChain();
+            addLim(-2);
 
-            return decodedBuffer;
-        }
-
-        function bufferToBase64(buf) {
-            var binstr = Array.prototype.map.call(buf, function (ch) {
-                return String.fromCharCode(ch);
-            }).join('');
-            return btoa(binstr);
-        }
+            updateUI();
+        })()
 
         function loadAudio(e) {
             var reader = new FileReader();
@@ -104,6 +191,15 @@
             reader.onload = function(e) {
                 aCtx.decodeAudioData(reader.result,function(e){
                     buffer = e;
+
+                    var filtered = iir(buffer.getChannelData(0),10,true);
+
+                    var source = aCtx.createBufferSource();
+                    source.buffer = filtered;
+
+                    source.connect(aCtx.destination);
+                    source.start();
+
                     //download("data:application/octet-stream;base64," + bufferToBase64(new Uint8Array(dpcmData.data)),"sample.dmc","application/octet-stream");
                 });
             }
@@ -113,10 +209,10 @@
             var newBuff = aCtx.createBuffer(1, buffer.getChannelData(0).length, aCtx.sampleRate);
             newBuff.copyToChannel(buffer.getChannelData(0),0);
             
-            var dpcmData = toDPCMOfflines(newBuff.getChannelData(0),true,15);
+            var dpcmData = toDPCM(newBuff.getChannelData(0),true,15);
             console.log(dpcmData);
             
-            var decoded = toAudioOffline(dpcmData);
+            var decoded = toAudio(dpcmData);
             
             var source = aCtx.createBufferSource();
             source.buffer = decoded;
@@ -129,27 +225,32 @@
             if(e.keyCode === 32) play();
         });
 
+        window.addEventListener("mousemove",function(e){
+            mouseX = e.x;
+        });
+
+        window.addEventListener("mousedown",function(e){
+            //e.preventDefault();
+
+            if(typeof(buffer) !== "undefined") {
+                var noise = [];
+
+                for(x = 0; x < aCtx.sampleRate; x++) {
+                    noise.push((Math.random() * 2) - 1);
+                }
+
+                var filtered = iir(buffer.getChannelData(0),mouseX,true);
+                
+                var source = aCtx.createBufferSource();
+                source.buffer = filtered;
+                
+                source.connect(aCtx.destination);
+                source.start();
+            }
+        });
+
         var fileLoader = document.getElementById("fileLoader");
         fileLoader.onchange = loadAudio;
-            
-        function startAudioContext() {                
-            aCtx.audioWorklet.addModule('sound.js').then(() => {
-            class fmSynth extends AudioWorkletNode {
-                constructor(context) {
-                    super(context, 'fmSynth');
-                }
-            }
-                node = new fmSynth(aCtx);
-            
-                //node.port.postMessage({type: "patchEdit", value: insts});
-            
-                var gain = aCtx.createGain();
-                gain.gain.value = 0.5;
-            
-                node.connect(gain);
-                gain.connect(aCtx.destination);
-            });
-        }
 
         </script>
     </body>
