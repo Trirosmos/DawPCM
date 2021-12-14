@@ -54,7 +54,41 @@
         }
 
         function toAudioOffline(dpcm) {
+            var deltaT = 0;
+            var dCounter = 0;
+            var bit = 0;
+            var byte = 0;
+
+            var soundData = [];
+
+            for(x = 0; x < dpcm.data.length * 8; x++) {
+                deltaT += dpcm.sampleTime;
+                if(dpcm.data[byte] & (1 << bit)) dCounter += (2/64);
+                else dCounter -= (2/64);
+
+                if(dCounter < -1) dCounter = -1;
+                if(dCounter > 1) dCounter = 1;
+
+                while(deltaT > 1/aCtx.sampleRate) {
+                    deltaT -= 1/aCtx.sampleRate;
+                    soundData.push(dCounter);
+                }
+
+                bit++;
+                if(bit > 7) {
+                    bit = 0;
+                    byte++;
+                }
+            }
+
+            var decodedBuffer = aCtx.createBuffer(1,soundData.length, aCtx.sampleRate);
+            var decodedBufferData = decodedBuffer.getChannelData(0);
             
+            for(x = 0; x < decodedBufferData.length; x++) {
+                decodedBufferData[x] = soundData[x];
+            }
+
+            return decodedBuffer;
         }
 
         function bufferToBase64(buf) {
@@ -70,19 +104,30 @@
             reader.onload = function(e) {
                 aCtx.decodeAudioData(reader.result,function(e){
                     buffer = e;
-
-                    var source = aCtx.createBufferSource();
-                    source.buffer = buffer;
-
-                    source.connect(aCtx.destination);
-                    source.start();
-
-                    var dpcmData = toDPCMOfflines(buffer.getChannelData(0),true,15).data;
-                    console.log(dpcmData);
-                    download("data:application/octet-stream;base64," + bufferToBase64(new Uint8Array(dpcmData)),"sample.dmc","application/octet-stream");
+                    //download("data:application/octet-stream;base64," + bufferToBase64(new Uint8Array(dpcmData.data)),"sample.dmc","application/octet-stream");
                 });
             }
         }
+
+        function play() {
+            var newBuff = aCtx.createBuffer(1, buffer.getChannelData(0).length, aCtx.sampleRate);
+            newBuff.copyToChannel(buffer.getChannelData(0),0);
+            
+            var dpcmData = toDPCMOfflines(newBuff.getChannelData(0),true,15);
+            console.log(dpcmData);
+            
+            var decoded = toAudioOffline(dpcmData);
+            
+            var source = aCtx.createBufferSource();
+            source.buffer = decoded;
+            
+            source.connect(aCtx.destination);
+            source.start();
+        }
+
+        window.addEventListener("keydown",function(e){
+            if(e.keyCode === 32) play();
+        });
 
         var fileLoader = document.getElementById("fileLoader");
         fileLoader.onchange = loadAudio;
