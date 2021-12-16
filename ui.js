@@ -62,13 +62,13 @@ function displayGain() {
 
     var gain = createE("input");
     gain.type = "range";
-    gain.min = "0";
-    gain.max = "100";
-    gain.value = String(Math.round(effect.value * 100));
+    gain.min = "-60";
+    gain.max = "60";
+    gain.value = String(effect.value);
     sizePos(gain,15,24,60,40);
 
     var gainValueText = createE("p");
-    gainValueText.innerHTML = String(effect.value);
+    gainValueText.innerHTML = String(effect.value) + " dB";
     sizePos(gainValueText,80,35,20,40);
 
     gain.onchange = function() {
@@ -76,8 +76,8 @@ function displayGain() {
         if(effect === undefined) return;
 
         if(effect.type === "gain") {
-            effect.value = Number(gain.value) / 100;
-            gainValueText.innerHTML = String(effect.value);
+            effect.value = Number(gain.value);
+            gainValueText.innerHTML = String(effect.value) + " dB";
         }
     }
 
@@ -207,10 +207,36 @@ function displayWaveshape() {
     var hardnessText = createE("p");
     hardnessText.innerHTML = "Hardness: ";
     sizePos(hardnessText,5,35,20,40);
+
+    var algoSelect = createE("select");
+    sizePos(algoSelect,15,58,20,10);
+    algoSelect.onchange = function() {
+        if(algoSelect.selectedIndex !== -1 && algoSelect.selectedIndex < 2) {
+            var effect = getCurrentFX();
+            if(effect === undefined) return;
+            
+            effect.algo = algoSelect.selectedIndex;
+        } 
+    }
+
+    var tanh = createE("option");
+    tanh.innerHTML = "tanh(x)";
+    algoSelect.appendChild(tanh);
+
+    var x2 = createE("option");
+    x2.innerHTML = "tanh(x)²";
+    algoSelect.appendChild(x2);
+
+    var algoText = createE("p");
+    algoText.innerHTML = "Type: ";
+    sizePos(algoText,5,55,20,40);
+
     
     fxSettingsDisplay.appendChild(hardness);
     fxSettingsDisplay.appendChild(hardnessText);
     fxSettingsDisplay.appendChild(hardnessValueText);
+    fxSettingsDisplay.appendChild(algoSelect);
+    fxSettingsDisplay.appendChild(algoText);
 }
 
 function displayLimiter() {
@@ -248,10 +274,10 @@ function displayLimiter() {
 }
 
 function updateFXSettings() {
+    fxSettingsDisplay.textContent = "";
+    
     var effect = getCurrentFX();
     if(effect === undefined) return;
-
-    fxSettingsDisplay.textContent = "";
 
     switch(effect.type) {
         case "gain": 
@@ -273,8 +299,47 @@ function updateFXSettings() {
 
 }
 
+function updateWaveCanvas() {
+    waveCanvas.clearRect(0,0,waveCanvas.canvas.width,waveCanvas.canvas.height);
+    if(modifiedBuffer === undefined) return;
+
+    var audioData = modifiedBuffer.getChannelData(0);
+    var halfH = waveCanvas.canvas.height / 2;
+    waveCanvas.canvas.width = audioData.length;
+
+    waveCanvas.save();
+    waveCanvas.translate(0,halfH);
+    waveCanvas.beginPath();
+
+    for(let x = 0; x < audioData.length; x++) {
+        waveCanvas.lineTo(x,(audioData[x] * halfH));
+    }
+
+    waveCanvas.stroke();
+    waveCanvas.restore();
+
+    waveCanvas.save();
+    waveCanvas.fillStyle = "blue";
+    waveCanvas.globalAlpha = 0.4;
+    waveCanvas.fillRect(cursor,0,4,waveCanvas.canvas.height);
+    waveCanvas.restore();
+
+    if(selection.selected) {
+        waveCanvas.save();
+        waveCanvas.globalAlpha = 0.4;
+
+        waveCanvas.fillStyle = "red";
+        var left = Math.min(selection.start,selection.end);
+        var right = Math.max(selection.start,selection.end);
+
+        waveCanvas.fillRect(left,0,right - left,waveCanvas.canvas.height);
+        waveCanvas.restore();
+    }
+}
+
 function updateUI() {
     updateChainListDisplay();
     updateFXListDisplay();
     updateFXSettings();
+    updateWaveCanvas();
 }

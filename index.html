@@ -2,10 +2,9 @@
 <meta charset="utf8">
 <html>
     <header>
-        <title> DPCM Processor</title>
+        <title> D[aw]PCM</title>
     </header>
-    <body>
-        <input type = "file" id = "fileLoader"></input>
+    <body oncontextmenu = "return false;">
         <script type = "text/javascript" src = "utils.js"></script>
         <script type = "text/javascript" src = "effects.js"></script>
         <script type = "text/javascript" src = "dpcm.js"></script>
@@ -19,14 +18,37 @@
         var aCtx = new AudioContext();
         var node;
         var buffer;
-        var mouseX = 0;
+        var modifiedBuffer;
         var currentChain = 0;
         var currentFX = 0;
         var chains = [];
+        var selection = {
+            selected: false,
+            active: false,
+            start: 0,
+            end: 0,
+        }
+        var mouse = {
+            x: 0,
+            y: 0,
+            left: false
+        };
+        var cursor = 0;
+        var keys = {
+            ctrl: {
+                keyCode: 17,
+                down: false
+            },
+            shift: {
+                keyCode: 16,
+                down: false
+            }
+        }
 
         var chainListDisplay;
         var fxListDisplay;
         var fxSettingsDisplay;
+        var waveCanvas;
 
         function createChain() {
             chains.push({
@@ -63,11 +85,12 @@
             }
         }
 
-        function addWaveshape(value) {
+        function addWaveshape(value,algo) {
             if(chains[currentChain] !== undefined) {
                 var waveshape = {
                     name: "Waveshaping Distortion",
                     type: "waveshape",
+                    algo: algo,
                     hardness: value
                 };
         
@@ -88,6 +111,43 @@
                 updateUI()
             }
         }
+
+        function processEffect(buff,effect) {
+            switch(effect.type) {
+                case "iir":
+                    return iir(buff,effect.cutoff,effect.lowpass);
+                break;
+
+                case "limiter":
+                    return hardLim(buff,effect.threshold);
+                break;
+
+                case "waveshape":
+                    return waveDist(buff,effect.hardness,effect.algo);
+                break;
+
+                case "gain":
+                    return ampGain(buff,effect.value);
+                break;
+            }
+        }
+
+        function processChain(chain) {
+            var effects = chain.effects;
+            var currentBuffer;
+
+            for(let i = 0; i < effects.length; i++) {
+                if(currentBuffer) currentBuffer = processEffect(currentBuffer.getChannelData(0),effects[i]);
+                else if(buffer) currentBuffer = processEffect(buffer.getChannelData(0),effects[i]);
+            }
+
+            if(currentBuffer === undefined) {
+                if(buffer === undefined) currentBuffer = aCtx.createBuffer(1,aCtx.sampleRate, aCtx.sampleRate);
+                else return buffer;
+            }
+
+            return currentBuffer;
+        }
         
 
         (function createUI() {
@@ -101,10 +161,29 @@
             sizePos(fxDisplay,28,55,23,40);
             fxDisplay.style.border = "solid";
 
+            var waveDisplay = createE("div");
+            append(waveDisplay);
+            sizePos(waveDisplay,28,2,70,47);
+            waveDisplay.style.border = "solid";
+            waveDisplay.style.overflowX = "auto";
+            waveDisplay.style.overflowY = "hidden";
+
+            var settings = createE("div");
+            append(settings);
+            sizePos(settings,3,2,23,47);
+            settings.style.border = "solid";
+
             fxSettingsDisplay = createE("div");
             append(fxSettingsDisplay);
             sizePos(fxSettingsDisplay,53,55,45,40);
             fxSettingsDisplay.style.border = "solid";
+
+            var canvas = createE("canvas");
+            waveCanvas = canvas.getContext("2d");
+            canvas.height = 300;
+            canvas.width = 1000;
+            waveDisplay.appendChild(canvas);
+
 
             chainListDisplay = createE("select");
             sizePos(chainListDisplay,0,0,100,83);
@@ -117,7 +196,7 @@
             var addChain = createE("button");
             addChain.innerHTML = "Create new FX chain";
             addChain.onclick = createChain;
-            sizePos(addChain,0,84,20,15);
+            sizePos(addChain,0,84,30,15);
             chainDisplay.appendChild(addChain);
 
             var deleteChain = createE("button");
@@ -127,7 +206,7 @@
                 if(index !== -1) chains.splice(index,1);
                 updateUI();
             }
-            sizePos(deleteChain,23,84,20,15);
+            sizePos(deleteChain,32,84,20,15);
             chainDisplay.appendChild(deleteChain);
 
             fxListDisplay = createE("select");
@@ -160,7 +239,7 @@
                     break;
 
                     case "Waveshaping Distortion":
-                        addWaveshape(0.5,true);
+                        addWaveshape(0.5,0);
                     break;
 
                     case "Brickwall Limiter":
@@ -179,8 +258,14 @@
             sizePos(deleteFX,60,84,20,15);
             fxDisplay.appendChild(deleteFX);
 
+            var loadFile = createE("input");
+            loadFile.type = "file";
+            settings.appendChild(loadFile);
+            loadFile.value = "";
+            loadFile.onchange = loadAudio;
+
             createChain();
-            addLim(-2);
+            addGain(0);
 
             updateUI();
         })()
@@ -191,26 +276,37 @@
             reader.onload = function(e) {
                 aCtx.decodeAudioData(reader.result,function(e){
                     buffer = e;
-
-                    var filtered = iir(buffer.getChannelData(0),10,true);
-
-                    var source = aCtx.createBufferSource();
-                    source.buffer = filtered;
-
-                    source.connect(aCtx.destination);
-                    source.start();
-
-                    //download("data:application/octet-stream;base64," + bufferToBase64(new Uint8Array(dpcmData.data)),"sample.dmc","application/octet-stream");
+                    modifiedBuffer = e;
+                    updateUI();
+                    play();
                 });
             }
         }
 
         function play() {
-            var newBuff = aCtx.createBuffer(1, buffer.getChannelData(0).length, aCtx.sampleRate);
-            newBuff.copyToChannel(buffer.getChannelData(0),0);
+            var chainResults = [];
+            var finalOutput;
+            var maximumLength = 0;
+
+            for(let x = 0; x < chains.length; x++) {
+                var partial = processChain(chains[x]);
+                chainResults.push(partial);
+                if(partial.getChannelData(0).length > maximumLength) maximumLength =  partial.getChannelData(0).length;
+            }
+
+            finalOutput = aCtx.createBuffer(1,maximumLength,aCtx.sampleRate);
+
+            for(let x = 0; x < maximumLength; x++) {
+                for(let k = 0; k < chainResults.length; k++) {
+                    var buff = chainResults[k].getChannelData(0);
+
+                    if(buff[x] !== undefined) finalOutput.getChannelData(0)[x] += buff[x];
+                }
+            }
+
+            modifiedBuffer = finalOutput;
             
-            var dpcmData = toDPCM(newBuff.getChannelData(0),true,15);
-            console.log(dpcmData);
+            var dpcmData = toDPCM(finalOutput.getChannelData(0),true,15);
             
             var decoded = toAudio(dpcmData);
             
@@ -219,38 +315,193 @@
             
             source.connect(aCtx.destination);
             source.start();
+
+            updateWaveCanvas();
         }
 
-        window.addEventListener("keydown",function(e){
-            if(e.keyCode === 32) play();
-        });
+        window.addEventListener("keyup",function(e){
+            if(e.keyCode === keys.ctrl.keyCode) keys.ctrl.down = false;
+            if(e.keyCode === keys.shift.keyCode) keys.shift.down = false;
+        })
 
-        window.addEventListener("mousemove",function(e){
-            mouseX = e.x;
+        window.addEventListener("keydown",function(e){
+            //e.preventDefault();
+            if(e.keyCode === 32) {
+                play();
+            }
+            if(e.keyCode === 116) location.reload();
+
+            if(e.keyCode === keys.ctrl.keyCode) keys.ctrl.down = true;
+            if(e.keyCode === keys.shift.keyCode) keys.shift.down = true;
+
+            if(e.keyCode === 37) {
+                if(keys.ctrl.down && selection.selected && !keys.shift.down) {
+                    if(selection.start < selection.end) {
+                        if(selection.start > 0) {
+                            selection.start --;
+                            updateWaveCanvas();
+                        }
+                    } 
+                    else if(selection.end > 0) {
+                        selection.end --;
+                        updateWaveCanvas();
+                    }
+                }
+                if(keys.shift.down && selection.selected && !keys.ctrl.down) {
+                    if(selection.start > selection.end) {
+                        if(selection.start > 0) {
+                            selection.start --;
+                            updateWaveCanvas();
+                        }
+                    } 
+                    else if(selection.end > 0) {
+                        selection.end --;
+                        updateWaveCanvas();
+                    }
+                }
+                if (cursor > 0 && !keys.ctrl.down && !keys.shift.down){
+                    cursor --;
+                    updateUI();
+                }
+            }
+            if(e.keyCode === 39) {
+                var fim = modifiedBuffer.getChannelData(0).length - 1;
+                if(keys.ctrl.down && selection.selected && !keys.shift.down) {
+                    if(selection.start < selection.end) {
+                        if(selection.start < fim) {
+                            selection.start ++;
+                            updateWaveCanvas();
+                        }
+                    } 
+                    else if(selection.end < fim) {
+                        selection.end ++;
+                        updateWaveCanvas();
+                    }
+                }
+                if(keys.shift.down && selection.selected && !keys.ctrl.down) {
+                    if(selection.start > selection.end) {
+                        if(selection.start < fim) {
+                            selection.start ++;
+                            updateWaveCanvas();
+                        }
+                    } 
+                    else if(selection.end < fim) {
+                        selection.end ++;
+                        updateWaveCanvas();
+                    }
+                }
+                if (cursor > 0 && !keys.ctrl.down && !keys.shift.down){
+                    cursor --;
+                    updateUI();
+                }
+            }
+
+            if(e.keyCode === 46) {
+                if(selection.selected) {
+                    if(keys.ctrl.down) {
+                        var left = Math.min(selection.start,selection.end);
+                        var right = Math.max(selection.start,selection.end);
+                        right -= left;
+                        if(right < 0) right = 0;
+                        
+                        buffer = spliceFloat(buffer,0,left);
+                        modifiedBuffer = spliceFloat(modifiedBuffer,0,left);
+
+                        buffer = spliceFloat(buffer,right,buffer.getChannelData(0).length - right);
+                        modifiedBuffer = spliceFloat(modifiedBuffer,right,modifiedBuffer.getChannelData(0).length - right);
+                        
+                        selection.selected = selection.active = false;
+
+                        cursor = 0;
+                        
+                        updateUI();
+                    }
+                    else {
+                        var left = Math.min(selection.start,selection.end);
+                        var right = Math.max(selection.start,selection.end);
+                        
+                        buffer = spliceFloat(buffer,left,right - left);
+                        modifiedBuffer = spliceFloat(modifiedBuffer,left,right - left);
+                        
+                        selection.selected = selection.active = false;
+
+                        cursor = 0;
+                        
+                        updateUI();
+                    }
+                }
+            }
+
+            console.log(e.keyCode);
         });
 
         window.addEventListener("mousedown",function(e){
             //e.preventDefault();
 
-            if(typeof(buffer) !== "undefined") {
-                var noise = [];
+            mouse.x = e.x;
+            if(e.button === 0) mouse.left = true;
 
-                for(x = 0; x < aCtx.sampleRate; x++) {
-                    noise.push((Math.random() * 2) - 1);
+            if(e.target === waveCanvas.canvas && e.button === 0) {
+                var rect = e.target.getBoundingClientRect();
+                var clickRelative = {
+                    x : e.pageX - rect.left,
+                    y: e.pageY - rect.top
                 }
 
-                var filtered = iir(buffer.getChannelData(0),mouseX,true);
-                
-                var source = aCtx.createBufferSource();
-                source.buffer = filtered;
-                
-                source.connect(aCtx.destination);
-                source.start();
+                cursor = clickRelative.x;
+
+                selection.selected = selection.active = true;
+                selection.start = Math.round(clickRelative.x);
+            }
+            else {
+                updateWaveCanvas();
             }
         });
 
-        var fileLoader = document.getElementById("fileLoader");
-        fileLoader.onchange = loadAudio;
+        window.addEventListener("mouseup",function(e){
+            //e.preventDefault();
+        
+            mouse.x = e.x;
+            if(e.button === 0) mouse.left = false;
+
+            if(e.target === waveCanvas.canvas) {
+                var rect = e.target.getBoundingClientRect();
+                var clickRelative = {
+                    x : e.pageX - rect.left,
+                    y: e.pageY - rect.top
+                }
+                
+                selection.end = Math.round(clickRelative.x);
+            }
+            else if(selection.selected === true) selection.active = false;
+
+            if(Math.abs(selection.start - selection.end) < 10) {
+                selection.selected = false;
+                selection.active = false;
+                
+                updateWaveCanvas();
+            } 
+
+            selection.active = false;
+        });
+
+        window.addEventListener("mousemove",function(e){
+            //e.preventDefault();
+        
+            mouse.x = e.x;
+
+            if(e.target === waveCanvas.canvas && selection.selected && selection.active) {
+                var rect = e.target.getBoundingClientRect();
+                var clickRelative = {
+                    x : e.pageX - rect.left,
+                    y: e.pageY - rect.top
+                }
+
+                selection.end = Math.round(clickRelative.x);
+
+                updateWaveCanvas();
+            }
+        });
 
         </script>
     </body>

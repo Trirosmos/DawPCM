@@ -33,7 +33,7 @@ function downloadBin(buff,name) {
     download("data:application/octet-stream;base64," + bufferToBase64(new Uint8Array(buff)),name,"application/octet-stream");
 }
 
-var getI = document.getElementById;
+var getI = function(e){return document.getElementById(e)};
 
 var createE = function(e){
     var el = document.createElement(e);
@@ -41,3 +41,20 @@ var createE = function(e){
     return el;
 }
 var append = function(e){return document.body.appendChild(e);}
+
+function spliceFloat(buff,start,remove,add) {
+    var audio  = [];
+    
+    for(let x = 0; x < buff.getChannelData(0).length; x++) {
+        audio[x] = buff.getChannelData(0)[x];
+    }
+    
+    audio.splice(start,remove,add);
+    
+    var newBuff = aCtx.createBuffer(1,audio.length,aCtx.sampleRate);
+    
+    for(let x = 0; x < buffer.getChannelData(0).length; x++) {
+        newBuff.getChannelData(0)[x] = audio[x];
+    }
+    return newBuff;
+}

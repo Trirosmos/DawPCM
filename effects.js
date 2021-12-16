@@ -22,7 +22,7 @@ function iir(buff,cutoff,lowpass) {
     return result;
 }
 
-function waveDist(buff,hardness,type) {        
+function waveDist(buff,hardness,algo) {        
     var result = aCtx.createBuffer(1,buff.length, aCtx.sampleRate);
     var resultData = result.getChannelData(0);
 
@@ -30,8 +30,8 @@ function waveDist(buff,hardness,type) {
     if(hardness < 0) hardness = 0; 
 
     for(x = 0; x < resultData.length; x++) {        
-        if(type == 0) resultData[x] = Math.tanh(buff[x] * hardness * 20);
-        else resultData[x] = buff[x]**2;
+        if(algo == 0) resultData[x] = Math.tanh(buff[x] * hardness * 20);
+        else resultData[x] = (Math.tanh(buff[x] * hardness * 20)**2) - 0.5;
     }
 
     return result;
