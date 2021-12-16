@@ -14,8 +14,8 @@
 
         /*
             TODO:
-            - Aidicionar recurso que muda comprimento do sample pra um dos múltipls permitidos.
             - Adicionar filtros de ordem mais alta rodando o filtro de primeira ordem várias vezes.
+            - Visualizações: posição do cursor, da seleção, valor do sample.
             - Adicionar compressor.
             - Adicionar repitcher.
             - Undo/Redo/Salvar
@@ -245,6 +245,21 @@
 
                 updateUI();
       
+            }
+
+            var roundButton = createE("button");
+            roundButton.innerHTML = "Make sample length multiple of 16+1";
+            waveDisplay.appendChild(roundButton);
+            sizePos(roundButton,50,92,25,7);
+            roundButton.onclick = function() {
+                var length = buffer.getChannelData(0).length;
+                var diff = length % 16;
+
+                var toAdd = new Array(diff + 1);
+                toAdd.fill(0);
+
+                modifiedBuffer =  spliceFloat(modifiedBuffer,length - 1,0,toAdd);
+                buffer = spliceFloat(buffer,length - 1,0,toAdd); 
             }
 
             chainListDisplay = createE("select");
