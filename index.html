@@ -14,7 +14,6 @@
 
         /*
             TODO:
-            - Adicionar filtros de ordem mais alta rodando o filtro de primeira ordem várias vezes.
             - Adicionar compressor.
             - Adicionar repitcher.
             - Undo/Redo/Salvar
@@ -22,6 +21,7 @@
 
         document.body.style.height = window.innerHeight + "px";
         document.body.style.width = window.innerWidth + "px";
+        document.body.style.overflow = "hidden";
 
         var aCtx = new AudioContext();
         var node;
@@ -79,13 +79,14 @@
             }
         }
 
-        function addIIR(cutoff,lowpass) {
+        function addIIR(cutoff,lowpass, order) {
             if(chains[currentChain] !== undefined) {
                 var iir = {
                     name: "IIR Filter",
                     type: "iir",
                     cutoff: cutoff,
-                    lowpass: lowpass
+                    lowpass: lowpass,
+                    order: order
                 };
         
                 chains[currentChain].effects.push(iir);
@@ -123,7 +124,13 @@
         function processEffect(buff,effect) {
             switch(effect.type) {
                 case "iir":
-                    return iir(buff,effect.cutoff,effect.lowpass);
+                    var lastBuff;
+                    for(let x = 0; x < effect.order; x++) {
+                        if(lastBuff) lastBuff = iir(lastBuff.getChannelData(0),effect.cutoff,effect.lowpass);
+                        else lastBuff = iir(buff,effect.cutoff,effect.lowpass);
+                    }
+
+                    return lastBuff;
                 break;
 
                 case "limiter":
@@ -329,7 +336,7 @@
                     break;
 
                     case "IIR Filter":
-                        addIIR(10000,true);
+                        addIIR(10000,true,1);
                     break;
 
                     case "Waveshaping Distortion":
@@ -359,7 +366,7 @@
             loadFile.onchange = loadAudio;
 
             createChain();
-            addGain(0);
+            addIIR(1000,true,1);
 
             updateUI();
         })()
@@ -399,13 +406,15 @@
             }
 
             modifiedBuffer = finalOutput;
+
+            finalOutput = spliceFloat(finalOutput,0,cursor);
             
             var dpcmData = toDPCM(finalOutput.getChannelData(0),true,15);
             
             var decoded = toAudio(dpcmData);
             
             var source = aCtx.createBufferSource();
-            source.buffer = decoded;
+            source.buffer = finalOutput;
             
             source.connect(aCtx.destination);
             source.start();

@@ -168,6 +168,27 @@ function displayIIR() {
     highpassText.innerHTML = "High-pass: ";
     sizePos(highpassText,22,45,15,15);
 
+    var orderText = createE("p");
+    orderText.innerHTML = "Order: ";
+    sizePos(orderText,3,70,10,10);
+
+    var orderSelect = createE("select");
+    sizePos(orderSelect,15,74,10,10);
+
+    createOption(orderSelect, [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+    ]);
+
+    orderSelect.onchange = function() {
+        if(orderSelect.selectedIndex !== -1) {
+            effect.order = orderSelect.selectedIndex + 1;
+        }
+    }
+
     
 
     fxSettingsDisplay.appendChild(cutoff);
@@ -177,6 +198,8 @@ function displayIIR() {
     fxSettingsDisplay.appendChild(lowpassno);
     fxSettingsDisplay.appendChild(lowpassText);
     fxSettingsDisplay.appendChild(highpassText);
+    fxSettingsDisplay.appendChild(orderText);
+    fxSettingsDisplay.appendChild(orderSelect);
 }
 
 function displayWaveshape() {
