@@ -303,9 +303,17 @@ function updateWaveCanvas() {
     waveCanvas.clearRect(0,0,waveCanvas.canvas.width,waveCanvas.canvas.height);
     if(modifiedBuffer === undefined) return;
 
+    var left = Math.min(selection.start,selection.end);
+    var right = Math.max(selection.start,selection.end);
+
     var audioData = modifiedBuffer.getChannelData(0);
     var halfH = waveCanvas.canvas.height / 2;
     waveCanvas.canvas.width = audioData.length;
+
+    waveCanvas.cursorPos.innerHTML = "Cursor: " + cursor + "/" + audioData.length;
+
+    if(selection.selected) waveCanvas.selectionPos.innerHTML = "Selection:" + left + "-" + right;
+    else waveCanvas.selectionPos.innerHTML = "";
 
     waveCanvas.save();
     waveCanvas.translate(0,halfH);
@@ -329,8 +337,6 @@ function updateWaveCanvas() {
         waveCanvas.globalAlpha = 0.4;
 
         waveCanvas.fillStyle = "red";
-        var left = Math.min(selection.start,selection.end);
-        var right = Math.max(selection.start,selection.end);
 
         waveCanvas.fillRect(left,0,right - left,waveCanvas.canvas.height);
         waveCanvas.restore();

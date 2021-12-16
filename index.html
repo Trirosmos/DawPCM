@@ -15,7 +15,6 @@
         /*
             TODO:
             - Adicionar filtros de ordem mais alta rodando o filtro de primeira ordem várias vezes.
-            - Visualizações: posição do cursor, da seleção, valor do sample.
             - Adicionar compressor.
             - Adicionar repitcher.
             - Undo/Redo/Salvar
@@ -194,8 +193,9 @@
             waveDisplay.appendChild(canvas);
 
             var waveActionText = createE("select");
-            sizePos(waveActionText,1,92,5,7);
+            sizePos(waveActionText,28.5,50.3,4,4);
             waveDisplay.appendChild(waveActionText)
+            waveActionText.style.position = "fixed";
             createOption(waveActionText,[
                 "Add",
                 "Remove"
@@ -205,16 +205,19 @@
             waveDisplay.appendChild(waveActionChoice);
             waveActionChoice.min = "1";
             waveActionChoice.value = "1";
-            sizePos(waveActionChoice,7,92,10,5);
+            sizePos(waveActionChoice,33.5,50.5,6,3);
+            waveActionChoice.style.position = "fixed";
             waveActionChoice.type = "number";
 
             var waveSamplesText = createE("p");
             waveSamplesText.innerHTML = "samples at";
-            sizePos(waveSamplesText,19,88,20,5);
+            sizePos(waveSamplesText,41,48.5,20,5);
+            waveSamplesText.style.position = "fixed";
             waveDisplay.appendChild(waveSamplesText)
 
             var waveActionOption = createE("select");
-            sizePos(waveActionOption,28,92,10,7);
+            sizePos(waveActionOption,47.5,50,7,4);
+            waveActionOption.style.position = "fixed";
             waveDisplay.appendChild(waveActionOption);
 
             createOption(waveActionOption,[
@@ -225,7 +228,8 @@
 
             var waveActionButton = createE("button");
             waveActionButton.innerHTML = "Go";
-            sizePos(waveActionButton,40,92,7,7);
+            sizePos(waveActionButton,56,50,4,4);
+            waveActionButton.style.position = "fixed";
             waveDisplay.appendChild(waveActionButton);
             waveActionButton.onclick = function() {
                 var action = waveActionText.selectedIndex;
@@ -248,9 +252,10 @@
             }
 
             var roundButton = createE("button");
-            roundButton.innerHTML = "Make sample length multiple of 16+1";
+            roundButton.innerHTML = "Make sample length (multiple of 16)+1";
             waveDisplay.appendChild(roundButton);
-            sizePos(roundButton,50,92,25,7);
+            sizePos(roundButton,61,50,20,4);
+            roundButton.style.position = "fixed";
             roundButton.onclick = function() {
                 var length = buffer.getChannelData(0).length;
                 var diff = length % 16;
@@ -261,6 +266,18 @@
                 modifiedBuffer =  spliceFloat(modifiedBuffer,length - 1,0,toAdd);
                 buffer = spliceFloat(buffer,length - 1,0,toAdd); 
             }
+
+            var cursorPos = createE("p");
+            sizePos(cursorPos,29,2,20,10);
+            waveDisplay.appendChild(cursorPos);
+            waveCanvas.cursorPos = cursorPos;
+            cursorPos.style.position = "fixed";
+
+            var selectionPos = createE("p");
+            sizePos(selectionPos,43,2,20,10);
+            waveDisplay.appendChild(selectionPos);
+            waveCanvas.selectionPos = selectionPos;
+            selectionPos.style.position = "fixed";
 
             chainListDisplay = createE("select");
             sizePos(chainListDisplay,0,0,100,83);
@@ -408,6 +425,11 @@
             }
             if(e.keyCode === 116) location.reload();
 
+            if(e.keyCode === 36) {
+                cursor = 0;
+                updateUI();
+            }
+
             if(e.keyCode === keys.ctrl.keyCode) keys.ctrl.down = true;
             if(e.keyCode === keys.shift.keyCode) keys.shift.down = true;
 
@@ -531,6 +553,7 @@
                 selection.start = Math.round(clickRelative.x);
             }
             else {
+                if(e.button === 2) selection.selected = selection.active = false;
                 updateWaveCanvas();
             }
         });
