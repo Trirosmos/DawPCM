@@ -48,8 +48,12 @@ function spliceFloat(buff,start,remove,add) {
     for(let x = 0; x < buff.getChannelData(0).length; x++) {
         audio[x] = buff.getChannelData(0)[x];
     }
+
+    var args = [];
+    args.push(start,remove)
+    args = args.concat(add);
     
-    audio.splice(start,remove,add);
+    audio.splice.apply(audio,args);
     
     var newBuff = aCtx.createBuffer(1,audio.length,aCtx.sampleRate);
     
