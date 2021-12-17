@@ -296,6 +296,39 @@ function displayLimiter() {
     fxSettingsDisplay.appendChild(thresholdValueText);
 }
 
+function displayCompressor() {
+    var effect = getCurrentFX();
+    if(effect === undefined) return;
+
+    var thresholdText = createE("p");
+    thresholdText.innerHTML = "Threshold: ";
+    sizePos(thresholdText,5,5,20,40);
+
+    var thresholdValueText = createE("p");
+    thresholdValueText.innerHTML = String(effect.threshold) + " dB";
+    sizePos(thresholdValueText,74,5,20,40);
+
+    var threshold = createE("input");
+    threshold.type = "range";
+    threshold.min = "-100";
+    threshold.max = "0";
+    threshold.value = String(effect.threshold);
+    sizePos(threshold,25,0,45,25);
+    threshold.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+
+        if(effect.type === "comp") {
+            effect.threshold = Number(threshold.value);
+            thresholdValueText.innerHTML = effect.threshold + " dB";
+        }
+    }
+
+    fxSettingsDisplay.appendChild(thresholdText);
+    fxSettingsDisplay.appendChild(threshold);
+    fxSettingsDisplay.appendChild(thresholdValueText);
+}
+
 function updateFXSettings() {
     fxSettingsDisplay.textContent = "";
     
@@ -317,6 +350,10 @@ function updateFXSettings() {
 
         case "limiter": 
             displayLimiter();
+        break;
+
+        case "comp": 
+            displayCompressor();
         break;
     }
 

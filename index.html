@@ -57,6 +57,7 @@
         var fxListDisplay;
         var fxSettingsDisplay;
         var waveCanvas;
+        var dmc;
 
         function createChain() {
             chains.push({
@@ -121,6 +122,24 @@
             }
         }
 
+        function addComp(threshold, attack, sustain, release, ratio, gain) {
+            if(chains[currentChain] !== undefined) {
+                var comp = {
+                    name: "Compressor",
+                    type: "comp",
+                    threshold: threshold,
+                    attack: attack,
+                    sustain: sustain,
+                    release: release,
+                    ratio: ratio,
+                    gain: gain
+                };
+            
+                chains[currentChain].effects.push(comp);
+                updateUI()
+            }
+        }
+
         function processEffect(buff,effect) {
             switch(effect.type) {
                 case "iir":
@@ -143,6 +162,10 @@
 
                 case "gain":
                     return ampGain(buff,effect.value);
+                break;
+
+                case "comp":
+                    return comp(buff,effect.threshold,effect.attack,effect.sustain,effect.release,effect.ratio,effect.gain);
                 break;
             }
         }
@@ -320,7 +343,7 @@
 
             var fxSelect = createE("select");
             sizePos(fxSelect,25,84,30,15);
-            createOption(fxSelect,["IIR Filter", "Gain", "Brickwall Limiter", "Waveshaping Distortion"]);
+            createOption(fxSelect,["IIR Filter", "Gain", "Brickwall Limiter", "Waveshaping Distortion", "Compressor"]);
             fxDisplay.appendChild(fxSelect);
 
             var addFX = createE("button");
@@ -346,6 +369,10 @@
                     case "Brickwall Limiter":
                         addLim(-2,true);
                     break;
+
+                    case "Compressor":
+                        addComp(0,20,100,20,2,0);
+                    break;
                 }
             }
 
@@ -365,8 +392,16 @@
             loadFile.value = "";
             loadFile.onchange = loadAudio;
 
+            var exportDPCM = createE("button");
+            sizePos(exportDPCM,2,20,30,10);
+            exportDPCM.innerHTML = "Export DMC";
+            exportDPCM.onclick = function() {
+                downloadBin(dmc,"sample.dmc");
+            }
+            settings.appendChild(exportDPCM);
+
             createChain();
-            addIIR(1000,true,1);
+            addComp(0,20,100,20,2,0);
 
             updateUI();
         })()
@@ -384,7 +419,7 @@
             }
         }
 
-        function play() {
+        function play(noSound) {
             var chainResults = [];
             var finalOutput;
             var maximumLength = 0;
@@ -410,14 +445,16 @@
             finalOutput = spliceFloat(finalOutput,0,cursor);
             
             var dpcmData = toDPCM(finalOutput.getChannelData(0),true,15);
+
+            dmc = dpcmData.data;
             
             var decoded = toAudio(dpcmData);
             
             var source = aCtx.createBufferSource();
-            source.buffer = finalOutput;
+            source.buffer = decoded;
             
             source.connect(aCtx.destination);
-            source.start();
+            if(!noSound) source.start();
 
             updateWaveCanvas();
         }
