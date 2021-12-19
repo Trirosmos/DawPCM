@@ -78,6 +78,7 @@ function displayGain() {
         if(effect.type === "gain") {
             effect.value = Number(gain.value);
             gainValueText.innerHTML = String(effect.value) + " dB";
+            play(!autoPlay)
         }
     }
 
@@ -98,7 +99,7 @@ function displayIIR() {
     var cutoffNumber = createE("input");
 
     cutoff.type = "range";
-    cutoff.min = "0";
+    cutoff.min = "1";
     cutoff.max = "24000";
     cutoff.value = String(effect.cutoff);
     sizePos(cutoff,35,5,27,40);
@@ -109,6 +110,7 @@ function displayIIR() {
         if(effect.type === "iir") {
             effect.cutoff = Number(cutoff.value);
             cutoffNumber.value = Number(cutoff.value);
+            play(!autoPlay)
         }
     }
 
@@ -124,6 +126,7 @@ function displayIIR() {
         if(effect.type === "iir") {
             effect.cutoff = Number(cutoffNumber.value);
             cutoff.value = Number(cutoffNumber.value);
+            play(!autoPlay)
         }
     }
 
@@ -144,6 +147,7 @@ function displayIIR() {
         if(lowpassyes.checked) {
             lowpassno.checked = false;
             if(effect.type === "iir") effect.lowpass = true;
+            play(!autoPlay)
         }
     }
 
@@ -157,6 +161,7 @@ function displayIIR() {
         if(lowpassno.checked) {        
             lowpassyes.checked = false;
             if(effect.type === "iir") effect.lowpass = false;
+            play(!autoPlay)
         }
     }
 
@@ -186,6 +191,7 @@ function displayIIR() {
     orderSelect.onchange = function() {
         if(orderSelect.selectedIndex !== -1) {
             effect.order = orderSelect.selectedIndex + 1;
+            play(!autoPlay)
         }
     }
 
@@ -224,6 +230,7 @@ function displayWaveshape() {
         if(effect.type === "waveshape") {
             effect.hardness = Number(hardness.value) / 100;
             hardnessValueText.innerHTML = String(effect.hardness);
+            play(!autoPlay)
         }
     }
     
@@ -239,6 +246,7 @@ function displayWaveshape() {
             if(effect === undefined) return;
             
             effect.algo = algoSelect.selectedIndex;
+            play(!autoPlay)
         } 
     }
 
@@ -284,6 +292,7 @@ function displayLimiter() {
         if(effect.type === "limiter") {
             effect.threshold = Number(threshold.value);
             thresholdValueText.innerHTML = String(effect.threshold) + " dB";
+            play(!autoPlay)
         }
     }
     
@@ -321,12 +330,155 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.threshold = Number(threshold.value);
             thresholdValueText.innerHTML = effect.threshold + " dB";
+            play(!autoPlay)
         }
     }
 
+    var attack = createE("input");
+    attack.type = "range";
+    attack.min = "1";
+    attack.max = "100";
+    attack.value = String(effect.attack);
+    sizePos(attack,25,20,45,15);
+    attack.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+    
+        if(effect.type === "comp") {
+            effect.attack = Number(attack.value);
+            attackValueText.innerHTML = effect.attack + " ms";
+            play(!autoPlay)
+        }
+    }
+
+    var attackText = createE("p");
+    attackText.innerHTML = "Attack: ";
+    sizePos(attackText,5,20,20,40);
+
+    var attackValueText = createE("p");
+    attackValueText.innerHTML = String(effect.attack) + " ms";
+    sizePos(attackValueText,74,20,20,40);
+
+    var sustain = createE("input");
+    sustain.type = "range";
+    sustain.min = "1";
+    sustain.max = "100";
+    sustain.value = String(effect.sustain);
+    sizePos(sustain,25,35,45,15);
+    sustain.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+    
+        if(effect.type === "comp") {
+            effect.sustain = Number(sustain.value);
+            sustainValueText.innerHTML = effect.sustain + " ms";
+            play(!autoPlay)
+        }
+    }
+
+    var sustainText = createE("p");
+    sustainText.innerHTML = "Sustain: ";
+    sizePos(sustainText,5,35,20,40);
+
+    var sustainValueText = createE("p");
+    sustainValueText.innerHTML = String(effect.sustain) + " ms";
+    sizePos(sustainValueText,74,35,20,40);
+
+    var release = createE("input");
+    release.type = "range";
+    release.min = "1";
+    release.max = "100";
+    release.value = String(effect.release);
+    sizePos(release,25,50,45,15);
+    release.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+    
+        if(effect.type === "comp") {
+            effect.release = Number(release.value);
+            releaseValueText.innerHTML = effect.release + " ms";
+            play(!autoPlay)
+        }
+    }
+
+    var releaseText = createE("p");
+    releaseText.innerHTML = "Release: ";
+    sizePos(releaseText,5,50,20,40);
+
+    var releaseValueText = createE("p");
+    releaseValueText.innerHTML = String(effect.release) + " ms";
+    sizePos(releaseValueText,74,50,20,40);
+
+    var ratio = createE("input");
+    ratio.type = "range";
+    ratio.min = "1";
+    ratio.max = "10";
+    ratio.value = String(effect.ratio);
+    sizePos(ratio,25,65,45,15);
+    ratio.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+    
+        if(effect.type === "comp") {
+            effect.ratio = Number(ratio.value);
+            ratioValueText.innerHTML = effect.ratio + ":1";
+            play(!autoPlay)
+        }
+    }
+    
+
+    var ratioText = createE("p");
+    ratioText.innerHTML = "Ratio: ";
+    sizePos(ratioText,5,65,20,40);
+
+    var ratioValueText = createE("p");
+    ratioValueText.innerHTML = String(effect.ratio) + ":1";
+    sizePos(ratioValueText,74,65,20,40);
+
+    var gain = createE("input");
+    gain.type = "range";
+    gain.min = "-15";
+    gain.max = "15";
+    gain.value = String(effect.gain);
+    sizePos(gain,25,80,45,15);
+    gain.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+    
+        if(effect.type === "comp") {
+            effect.gain = Number(gain.value);
+            gainValueText.innerHTML = effect.gain + " dB";
+            play(!autoPlay)
+        }
+    }
+    
+
+    var gainText = createE("p");
+    gainText.innerHTML = "Make-up gain: ";
+    sizePos(gainText,5,80,20,40);
+
+    var gainValueText = createE("p");
+    gainValueText.innerHTML = String(effect.gain) + " dB";
+    sizePos(gainValueText,74,80,20,40);
+
     fxSettingsDisplay.appendChild(thresholdText);
     fxSettingsDisplay.appendChild(threshold);
+    fxSettingsDisplay.appendChild(attack);
+    fxSettingsDisplay.appendChild(sustain);
+    fxSettingsDisplay.appendChild(release);
+    fxSettingsDisplay.appendChild(ratio);
+    fxSettingsDisplay.appendChild(gain);
     fxSettingsDisplay.appendChild(thresholdValueText);
+    fxSettingsDisplay.appendChild(attackText);
+    fxSettingsDisplay.appendChild(sustainText);
+    fxSettingsDisplay.appendChild(releaseText);
+    fxSettingsDisplay.appendChild(ratioText);
+    fxSettingsDisplay.appendChild(gainText);
+    fxSettingsDisplay.appendChild(attackValueText);
+    fxSettingsDisplay.appendChild(sustainValueText);
+    fxSettingsDisplay.appendChild(releaseValueText);
+    fxSettingsDisplay.appendChild(ratioValueText);
+    fxSettingsDisplay.appendChild(gainValueText);
 }
 
 function updateFXSettings() {
@@ -380,11 +532,25 @@ function updateWaveCanvas() {
     waveCanvas.beginPath();
 
     for(let x = 0; x < audioData.length; x++) {
-        waveCanvas.lineTo(x,(audioData[x] * halfH));
+        waveCanvas.lineTo(x,(-audioData[x] * halfH));
     }
 
     waveCanvas.stroke();
     waveCanvas.restore();
+
+    /*waveCanvas.save();
+    waveCanvas.translate(0,halfH);
+    waveCanvas.beginPath();
+    waveCanvas.strokeStyle = "red";
+
+    console.log(audioData.length,peakDetect.length);
+    
+    for(let x = 0; x < peakDetect.length; x++) {
+        waveCanvas.lineTo(x,(-peakDetect[x] * halfH));
+    }
+    
+    waveCanvas.stroke();
+    waveCanvas.restore();*/
 
     waveCanvas.save();
     waveCanvas.fillStyle = "blue";

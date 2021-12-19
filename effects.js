@@ -74,51 +74,61 @@ function comp(buff,threshold, attack, sustain, release, ratio, gain) {
     var resultData = result.getChannelData(0);
 
     threshold = 10**(threshold/20);
+    gain = 10**(gain/20);
 
     var sustainCounter = 0;
     var sustainOn = false;
-    var sustainInSamples = (sustain * 10e-3)/(1/aCtx.sampleRate);
+    var sustainInSamples = (sustain * 10**-3)/(1/aCtx.sampleRate);
+    var attackInSamples = (attack * 10**-3)/(1/aCtx.sampleRate);
+    var releaseInSamples = (release * 10**-3)/(1/aCtx.sampleRate);
 
-    var triggerSignal = iir(buff,1/(attack * 10e-3),true).getChannelData(0);
-    triggerSignal = iir(triggerSignal,1/(attack * 10e-3),true).getChannelData(0);
-    triggerSignal = iir(triggerSignal,1/(attack * 10e-3),true).getChannelData(0);
+    var peakDetector = [0];
 
-    var accumulator = [];
+    for(let x = 0; x < buff.length; x++) {
+        var abs = Math.abs(buff[x]);
+        var last = x === 0 ? 0 : peakDetector[x - 1];
 
-    for(let x = 0; x < triggerSignal.length; x++) {
-        var last = accumulator.length > 0 ? accumulator[accumulator.length - 1] : 0;
-        accumulator.push(last * 0.5 + triggerSignal[x] * 0.5);
+        peakDetector[x] = last;
 
-        if(Math.abs(triggerSignal[x]) > threshold) {
-            if(!sustainOn) sustainOn = true;
-            sustainCounter += 1/aCtx.sampleRate;
+        if(abs > last) peakDetector[x] += Math.abs(abs - last) * (1/attackInSamples) * gain;
+
+        if(sustainOn) {
             if(sustainCounter > sustainInSamples) {
+                sustainCounter = 0;
                 sustainOn = false;
+            }
+            else sustainCounter ++;
+        }
+
+        if(!sustainOn) {
+            if(peakDetector[x] >= 0) peakDetector[x] -= peakDetector[x] * (1/releaseInSamples);
+            if(peakDetector[x] > last) {
+                sustainOn = true;
                 sustainCounter = 0;
             }
         }
-        if(!sustainOn) {
-            var index = accumulator.length - 1;
-            var value = accumulator[index];
-
-            accumulator[index] -= Math.pow(0.1,1/sustainInSamples) * value;
-        }
     }
 
-    var gain = [];
+    //peakDetect = peakDetector;
 
-    for(let x = 0; x < accumulator.length; x++) {
-        if(Math.abs(accumulator[x]) > threshold) {
-            var dif = 20 * Math.log(Math.abs(accumulator[x]/threshold));
-            dif = dif * (1/ratio);
-            gain[x] = 1 - dif;
-        }
-        else gain[x] = 1;
+    var ampValue = [];
+
+    for(let x = 0; x < peakDetector.length; x++) {
+        var dif = 20 * Math.log(peakDetector[x]/threshold);
+        var desiredLevel = dif/ratio;
+        var gainReduction = dif - desiredLevel;
+        var gainPercentage = 10**(-gainReduction/20);
+
+        //ampValue[x] = gainPercentage > 1 ? 1 : gainPercentage;
+        ampValue[x] = desiredLevel > 0 ? gainPercentage : 1;
     }
 
-    for(let x = 0; x < resultData.length; x++) {
-        resultData[x] = buff[x] * gain[x];
+    //peakDetect = ampValue;
+
+    for(let x = 0; x < ampValue.length; x++) {
+        resultData[x] = buff[x] * (gain * ampValue[x]);
     }
+    
 
 
     return result;

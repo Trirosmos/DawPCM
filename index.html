@@ -30,6 +30,7 @@
         var currentChain = 0;
         var currentFX = 0;
         var chains = [];
+        var autoPlay = true;
         var selection = {
             selected: false,
             active: false,
@@ -58,11 +59,13 @@
         var fxSettingsDisplay;
         var waveCanvas;
         var dmc;
+        var peakDetect = []
 
         function createChain() {
             chains.push({
                 name: "FX chain " + String(chains.length + 1),
-                effects: []
+                effects: [],
+                muted: false
             });
             updateUI();
         }
@@ -309,11 +312,23 @@
             waveCanvas.selectionPos = selectionPos;
             selectionPos.style.position = "fixed";
 
+            var mute = createE("input");
+            mute.type = "checkbox";
+            sizePos(mute,75,89,5,5);
+            chainDisplay.appendChild(mute);
+            mute.onchange = function() {
+                if(chains[currentChain]) {
+                    if(mute.checked) chains[currentChain].muted = true;
+                    else chains[currentChain].muted = false;
+                }
+            }
+
             chainListDisplay = createE("select");
             sizePos(chainListDisplay,0,0,100,83);
             chainDisplay.appendChild(chainListDisplay);
             chainListDisplay.onchange = function() {
                 currentChain = chainListDisplay.selectedIndex;
+                mute.checked = chains[currentChain].muted;
                 updateUI();
             }
 
@@ -332,6 +347,11 @@
             }
             sizePos(deleteChain,32,84,20,15);
             chainDisplay.appendChild(deleteChain);
+
+            var muteText = createE("p");
+            muteText.innerHTML = "Mute: ";
+            sizePos(muteText,60,84,15,5);
+            chainDisplay.appendChild(muteText);
 
             fxListDisplay = createE("select");
             sizePos(fxListDisplay,0,0,100,83);
@@ -401,7 +421,7 @@
             settings.appendChild(exportDPCM);
 
             createChain();
-            addComp(0,20,100,20,2,0);
+            addComp(-15,20,100,20,2,0);
 
             updateUI();
         })()
@@ -425,6 +445,7 @@
             var maximumLength = 0;
 
             for(let x = 0; x < chains.length; x++) {
+                if(chains[x].muted) continue;
                 var partial = processChain(chains[x]);
                 chainResults.push(partial);
                 if(partial.getChannelData(0).length > maximumLength) maximumLength =  partial.getChannelData(0).length;
