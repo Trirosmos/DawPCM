@@ -15,7 +15,8 @@
         /*
             TODO:
             - Undo/Redo/Salvar.
-            - Adicionar botões pra fazer fade-in/fade-out.
+            - Menu de opções.
+            - Compressor mais simples.
         */
 
         document.body.style.height = window.innerHeight + "px";
@@ -303,7 +304,7 @@
             var roundButton = createE("button");
             roundButton.innerHTML = "Make sample length (multiple of 16)+1";
             waveDisplay.appendChild(roundButton);
-            sizePos(roundButton,61,50,20,4);
+            sizePos(roundButton,61,50,16,4);
             roundButton.style.position = "fixed";
             roundButton.onclick = function() {
                 var length = buffer.getChannelData(0).length;
@@ -314,6 +315,44 @@
 
                 modifiedBuffer =  spliceFloat(modifiedBuffer,length - 1,0,toAdd);
                 buffer = spliceFloat(buffer,length - 1,0,toAdd); 
+            }
+
+            var fadeIn = createE("button");
+            fadeIn.innerHTML = "Fade-in";
+            waveDisplay.appendChild(fadeIn);
+            sizePos(fadeIn,78,50,6,4);
+            fadeIn.style.position = "fixed";
+            fadeIn.onclick = function() {
+                if(buffer !== undefined && modifiedBuffer !== undefined) {
+                    var bufferData = buffer.getChannelData(0);
+                    var modLength = modifiedBuffer.getChannelData(0).length;
+                    var end = Math.round((cursor/modLength) * bufferData.length);
+                    
+                    for(let x = 0; x < end; x++) {
+                        var gain = (x/end);
+                        bufferData[x] = bufferData[x] * gain;
+                    }
+                    play();
+                }
+            }
+
+            var fadeOut = createE("button");
+            fadeOut.innerHTML = "Fade-out";
+            waveDisplay.appendChild(fadeOut);
+            sizePos(fadeOut,85,50,6,4);
+            fadeOut.style.position = "fixed";
+            fadeOut.onclick = function() {
+                if(buffer !== undefined && modifiedBuffer !== undefined) {
+                    var bufferData = buffer.getChannelData(0);
+                    var modLength = modifiedBuffer.getChannelData(0).length;
+                    var start = Math.round((cursor/modLength) * bufferData.length);
+
+                    for(let x = start; x < bufferData.length; x++) {
+                        var gain = (1 - ((x - start)/(bufferData.length - start)));
+                        bufferData[x] = bufferData[x] * gain;
+                    }
+                    play();
+                }
             }
 
             var cursorPos = createE("p");
@@ -378,13 +417,13 @@
             }
 
             var fxSelect = createE("select");
-            sizePos(fxSelect,25,84,30,15);
+            sizePos(fxSelect,17,84,25,15);
             createOption(fxSelect,["IIR Filter", "Gain", "Brickwall Limiter", "Waveshaping Distortion", "Compressor", "Repitcher"]);
             fxDisplay.appendChild(fxSelect);
 
             var addFX = createE("button");
             addFX.innerHTML = "Add FX";
-            sizePos(addFX,0,84,20,15);
+            sizePos(addFX,0,84,15,15);
             fxDisplay.appendChild(addFX);
             addFX.onclick = function() {
                 if(fxSelect.selectedIndex === -1) return;
@@ -423,8 +462,42 @@
                 if(index !== -1) chains[currentChain].effects.splice(index,1);
                 updateUI();
             }
-            sizePos(deleteFX,60,84,20,15);
+            sizePos(deleteFX,44,84,20,15);
             fxDisplay.appendChild(deleteFX);
+
+            var moveFXUp = createE("button");
+            moveFXUp.innerHTML = "Move up";
+            sizePos(moveFXUp,70,84,25,7);
+            fxDisplay.appendChild(moveFXUp);
+            moveFXUp.onclick = function() {
+                var effect = getCurrentFX();
+                if(effect !== undefined) {
+                    if(currentFX > 0) {
+                        var temp = chains[currentChain].effects[currentFX - 1];
+                        chains[currentChain].effects[currentFX - 1] = effect;
+                        chains[currentChain].effects[currentFX] = temp;
+                        currentFX--;
+                        updateUI();
+                    }
+                }
+            }
+
+            var moveFXDown = createE("button");
+            moveFXDown.innerHTML = "Move down";
+            sizePos(moveFXDown,70,92,25,7);
+            fxDisplay.appendChild(moveFXDown);
+            moveFXDown.onclick = function() {
+                var effect = getCurrentFX();
+                if(effect !== undefined) {
+                    if(currentFX < chains[currentChain].effects.length - 1){
+                        var temp = chains[currentChain].effects[currentFX + 1];
+                        chains[currentChain].effects[currentFX + 1] = effect;
+                        chains[currentChain].effects[currentFX] = temp;
+                        currentFX++;
+                        updateUI();
+                    } 
+                }
+            }
 
             var loadFile = createE("input");
             loadFile.type = "file";
@@ -441,7 +514,7 @@
             settings.appendChild(exportDPCM);
 
             createChain();
-            addRepitch(0.5);
+            addGain(0);
 
             updateUI();
         })()

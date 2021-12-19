@@ -87,8 +87,6 @@ function repitch(buff,speed) {
     for(let x = 0; x < data.length; x++) {
         resultData[x] = data[x];
     }
-
-    console.log(resultData);
     
     return result;
 }
