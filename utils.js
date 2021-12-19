@@ -5,6 +5,24 @@ function bufferToBase64(buf) {
     return btoa(binstr);
 }
 
+function updateUndoBuffer() {
+    var newState = {
+        modifiedBuffer: modifiedBuffer,
+        buffer: buffer,
+        currentChain: currentChain,
+        currentFX: currentFX,
+        chains: JSON.stringify(chains),
+        selection: selection
+    };
+
+    undoBuffer.push(newState);
+    if(undoBuffer.length > 10) {
+        undoBuffer.splice(0,1);
+    }
+    
+    console.log(undoBuffer);
+}
+
 function getCurrentFX() {
     if(chains[currentChain] === undefined) return undefined;
     if(chains[currentChain].effects[currentFX] === undefined) return undefined;

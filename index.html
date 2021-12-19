@@ -54,12 +54,14 @@
             }
         }
 
+        var undoBuffer = [];
+
         var chainListDisplay;
         var fxListDisplay;
         var fxSettingsDisplay;
         var waveCanvas;
         var dmc;
-        //var peakDetect = []
+
 
         function createChain() {
             chains.push({
@@ -68,6 +70,7 @@
                 muted: false
             });
             updateUI();
+            updateUndoBuffer();
         }
 
         function addGain(value) {
@@ -396,8 +399,10 @@
             var deleteChain = createE("button");
             deleteChain.innerHTML = "Delete FX chain";
             deleteChain.onclick = function() {
+                if(currentChain === 0) return;
                 var index = chainListDisplay.selectedIndex;
                 if(index !== -1) chains.splice(index,1);
+                currentChain--;
                 updateUI();
             }
             sizePos(deleteChain,32,84,20,15);
@@ -453,6 +458,8 @@
                         addRepitch(1);
                     break;
                 }
+
+                updateUndoBuffer();
             }
 
             var deleteFX = createE("button");
@@ -460,6 +467,7 @@
             deleteFX.onclick = function() {
                 var index = fxListDisplay.selectedIndex;
                 if(index !== -1) chains[currentChain].effects.splice(index,1);
+                updateUndoBuffer();
                 updateUI();
             }
             sizePos(deleteFX,44,84,20,15);
@@ -478,6 +486,7 @@
                         chains[currentChain].effects[currentFX] = temp;
                         currentFX--;
                         updateUI();
+                        updateUndoBuffer();
                     }
                 }
             }
@@ -495,19 +504,49 @@
                         chains[currentChain].effects[currentFX] = temp;
                         currentFX++;
                         updateUI();
+                        updateUndoBuffer();
                     } 
                 }
             }
 
+            var fileText = createE("p");
+            fileText.innerHTML = "File:";
+            settings.appendChild(fileText);
+            sizePos(fileText,0,-3,20,5);
+
+            var settingsText = createE("p");
+            settingsText.innerHTML = "Settings:";
+            settings.appendChild(settingsText);
+            sizePos(settingsText,2,30,20,8);
+
+            var autoPlayCheck = createE("input");
+            autoPlayCheck.type = "checkbox";
+            sizePos(autoPlayCheck,40,42,5,10);
+            settings.appendChild(autoPlayCheck);
+            autoPlayCheck.checked = true;
+            autoPlayCheck.onchange = function() {
+                autoPlay = autoPlayCheck.checked;
+            }
+
+            var autoPlayText = createE("p");
+            autoPlayText.innerHTML = "Auto-play:";
+            settings.appendChild(autoPlayText);
+            sizePos(autoPlayText,5,40,30,10);
+
             var loadFile = createE("input");
+            loadFile.innerHTML = "Import";
             loadFile.type = "file";
             settings.appendChild(loadFile);
             loadFile.value = "";
-            loadFile.onchange = loadAudio;
+            loadFile.onchange = function(e) {
+                loadAudio(e);
+                updateUndoBuffer()
+            }
+            sizePos(loadFile,2,10,50,10);
 
             var exportDPCM = createE("button");
-            sizePos(exportDPCM,2,20,30,10);
-            exportDPCM.innerHTML = "Export DMC";
+            sizePos(exportDPCM,60,10,30,7);
+            exportDPCM.innerHTML = "Export DPCM";
             exportDPCM.onclick = function() {
                 downloadBin(dmc,"sample.dmc");
             }
@@ -587,11 +626,30 @@
 
             if(e.keyCode === 36) {
                 cursor = 0;
+                waveCanvas.canvas.parentElement.scrollTo(0,0);
                 updateUI();
             }
 
             if(e.keyCode === keys.ctrl.keyCode) keys.ctrl.down = true;
             if(e.keyCode === keys.shift.keyCode) keys.shift.down = true;
+
+            if(e.keyCode === 90 && keys.ctrl.down) {
+                if(undoBuffer.length <= 1) return;
+
+                var lastState = undoBuffer[undoBuffer.length - 2];
+                modifiedBuffer = lastState.modifiedBuffer;
+                buffer = lastState.buffer;
+                currentChain = lastState.currentChain;
+                currentFX = lastState.currentFX;
+                chains = JSON.parse(lastState.chains);
+                selection = lastState.selection;
+
+                undoBuffer.splice(undoBuffer.length - 2,2);
+
+                updateUI();
+
+                console.log(undoBuffer);
+            }
 
             if(e.keyCode === 37) {
                 if(keys.ctrl.down && selection.selected && !keys.shift.down) {
@@ -599,11 +657,13 @@
                         if(selection.start > 0) {
                             selection.start --;
                             updateWaveCanvas();
+                            updateUndoBuffer();
                         }
                     } 
                     else if(selection.end > 0) {
                         selection.end --;
                         updateWaveCanvas();
+                        updateUndoBuffer();
                     }
                 }
                 if(keys.shift.down && selection.selected && !keys.ctrl.down) {
@@ -611,16 +671,19 @@
                         if(selection.start > 0) {
                             selection.start --;
                             updateWaveCanvas();
+                            updateUndoBuffer();
                         }
                     } 
                     else if(selection.end > 0) {
                         selection.end --;
                         updateWaveCanvas();
+                        updateUndoBuffer();
                     }
                 }
                 if (cursor > 0 && !keys.ctrl.down && !keys.shift.down){
                     cursor --;
                     updateUI();
+                    updateUndoBuffer();
                 }
             }
             if(e.keyCode === 39) {
@@ -630,11 +693,13 @@
                         if(selection.start < fim) {
                             selection.start ++;
                             updateWaveCanvas();
+                            updateUndoBuffer();
                         }
                     } 
                     else if(selection.end < fim) {
                         selection.end ++;
                         updateWaveCanvas();
+                        updateUndoBuffer();
                     }
                 }
                 if(keys.shift.down && selection.selected && !keys.ctrl.down) {
@@ -642,16 +707,19 @@
                         if(selection.start < fim) {
                             selection.start ++;
                             updateWaveCanvas();
+                            updateUndoBuffer();
                         }
                     } 
                     else if(selection.end < fim) {
                         selection.end ++;
                         updateWaveCanvas();
+                        updateUndoBuffer();
                     }
                 }
                 if (cursor > 0 && !keys.ctrl.down && !keys.shift.down){
                     cursor --;
                     updateUI();
+                    updateUndoBuffer();
                 }
             }
 
@@ -674,6 +742,7 @@
                         cursor = 0;
                         
                         updateUI();
+                        updateUndoBuffer();
                     }
                     else {
                         var left = Math.min(selection.start,selection.end);
@@ -687,6 +756,7 @@
                         cursor = 0;
                         
                         updateUI();
+                        updateUndoBuffer();
                     }
                 }
             }
@@ -715,15 +785,18 @@
                     selection.end = Math.round(clickRelative.x);
 
                     updateWaveCanvas();
+                    updateUndoBuffer();
                 }
                 else {
                     cursor = Math.round(clickRelative.x);
                     
                     selection.selected = selection.active = true;
                     selection.start = Math.round(clickRelative.x);
+                    updateUndoBuffer();
                 }
             }
             else {
+                if(selection.selected || selection.active) updateUndoBuffer();
                 if(e.button === 2) selection.selected = selection.active = false;
                 updateWaveCanvas();
             }
@@ -742,7 +815,10 @@
                     y: e.pageY - rect.top
                 }
                 
-                if(selection.active) selection.end = Math.round(clickRelative.x);
+                if(selection.active) {
+                    selection.end = Math.round(clickRelative.x);
+                    updateUndoBuffer();
+                }
             }
             else if(selection.selected === true) selection.active = false;
 
@@ -771,6 +847,7 @@
                 selection.end = Math.round(clickRelative.x);
 
                 updateWaveCanvas();
+                updateUndoBuffer();
             }
         });
 

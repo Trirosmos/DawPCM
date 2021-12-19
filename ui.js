@@ -78,7 +78,8 @@ function displayGain() {
         if(effect.type === "gain") {
             effect.value = Number(gain.value);
             gainValueText.innerHTML = String(effect.value) + " dB";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -110,7 +111,8 @@ function displayIIR() {
         if(effect.type === "iir") {
             effect.cutoff = Number(cutoff.value);
             cutoffNumber.value = Number(cutoff.value);
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -126,7 +128,8 @@ function displayIIR() {
         if(effect.type === "iir") {
             effect.cutoff = Number(cutoffNumber.value);
             cutoff.value = Number(cutoffNumber.value);
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -147,7 +150,8 @@ function displayIIR() {
         if(lowpassyes.checked) {
             lowpassno.checked = false;
             if(effect.type === "iir") effect.lowpass = true;
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -161,7 +165,8 @@ function displayIIR() {
         if(lowpassno.checked) {        
             lowpassyes.checked = false;
             if(effect.type === "iir") effect.lowpass = false;
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -191,7 +196,8 @@ function displayIIR() {
     orderSelect.onchange = function() {
         if(orderSelect.selectedIndex !== -1) {
             effect.order = orderSelect.selectedIndex + 1;
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -230,7 +236,8 @@ function displayWaveshape() {
         if(effect.type === "waveshape") {
             effect.hardness = Number(hardness.value) / 100;
             hardnessValueText.innerHTML = String(effect.hardness);
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
     
@@ -246,7 +253,8 @@ function displayWaveshape() {
             if(effect === undefined) return;
             
             effect.algo = algoSelect.selectedIndex;
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         } 
     }
 
@@ -292,7 +300,8 @@ function displayLimiter() {
         if(effect.type === "limiter") {
             effect.threshold = Number(threshold.value);
             thresholdValueText.innerHTML = String(effect.threshold) + " dB";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
     
@@ -330,7 +339,8 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.threshold = Number(threshold.value);
             thresholdValueText.innerHTML = effect.threshold + " dB";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -347,7 +357,8 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.attack = Number(attack.value);
             attackValueText.innerHTML = effect.attack + " ms";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -372,7 +383,8 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.sustain = Number(sustain.value);
             sustainValueText.innerHTML = effect.sustain + " ms";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -397,7 +409,8 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.release = Number(release.value);
             releaseValueText.innerHTML = effect.release + " ms";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
@@ -422,7 +435,8 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.ratio = Number(ratio.value);
             ratioValueText.innerHTML = effect.ratio + ":1";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
     
@@ -448,7 +462,8 @@ function displayCompressor() {
         if(effect.type === "comp") {
             effect.gain = Number(gain.value);
             gainValueText.innerHTML = effect.gain + " dB";
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
     
@@ -503,7 +518,8 @@ function displayRepitcher() {
         if(effect.type === "repitch") {
             effect.speed = Number(speed.value / 100);
             speedValueText.innerHTML = String(effect.speed);
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
     
@@ -528,7 +544,8 @@ function displayRepitcher() {
             speed.value = Math.round(effect.speed * 100);
             semitonesValueText.innerHTML = semitones.value + " semitones";
             speedValueText.innerHTML = Number(speed.value) / 100;
-            play(!autoPlay)
+            play(!autoPlay);
+            updateUndoBuffer();
         }
     }
 
