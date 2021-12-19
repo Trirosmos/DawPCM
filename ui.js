@@ -481,6 +481,67 @@ function displayCompressor() {
     fxSettingsDisplay.appendChild(gainValueText);
 }
 
+function displayRepitcher() {
+    var effect = getCurrentFX();
+    if(effect === undefined) return;
+    
+    var speed = createE("input");
+    speed.type = "range";
+    speed.min = "1";
+    speed.max = "200";
+    speed.value = String(effect.speed * 100);
+    sizePos(speed,15,24,60,40);
+    
+    var speedValueText = createE("p");
+    speedValueText.innerHTML = String(effect.speed);
+    sizePos(speedValueText,80,35,20,40);
+    
+    speed.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+    
+        if(effect.type === "repitch") {
+            effect.speed = Number(speed.value / 100);
+            speedValueText.innerHTML = String(effect.speed);
+            play(!autoPlay)
+        }
+    }
+    
+    var speedText = createE("p");
+    speedText.innerHTML = "Speed: ";
+    sizePos(speedText,5,35,20,40);
+
+    var semitones = createE("input");
+    var semitonesValueText = createE("p");
+    semitones.type = "Range";
+    semitones.min = "-24";
+    semitones.max = "24";
+    semitones.value = "0";
+    sizePos(semitones,15,39,60,40);
+    semitones.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+        
+        if(effect.type === "repitch") {
+            var ratio = Math.pow(2,1/12);
+            effect.speed = ratio**Number(semitones.value);
+            speed.value = Math.round(effect.speed * 100);
+            semitonesValueText.innerHTML = semitones.value + " semitones";
+            speedValueText.innerHTML = Number(speed.value) / 100;
+            play(!autoPlay)
+        }
+    }
+
+    semitonesValueText.innerHTML = "0 semitones";
+    sizePos(semitonesValueText,80,50,20,10);
+    
+    fxSettingsDisplay.appendChild(speed);
+    fxSettingsDisplay.appendChild(speedText);
+    fxSettingsDisplay.appendChild(speedValueText);
+    fxSettingsDisplay.appendChild(semitones);
+    fxSettingsDisplay.appendChild(semitonesValueText);
+}
+
 function updateFXSettings() {
     fxSettingsDisplay.textContent = "";
     
@@ -506,6 +567,10 @@ function updateFXSettings() {
 
         case "comp": 
             displayCompressor();
+        break;
+
+        case "repitch": 
+            displayRepitcher();
         break;
     }
 

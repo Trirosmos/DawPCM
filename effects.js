@@ -69,6 +69,30 @@ function ampGain(buff,value) {
     return result;
 }
 
+function repitch(buff,speed) {
+    var position = 0;
+    var roundedPosition = 0;
+    var data = [];
+
+    while(roundedPosition < buff.length) {
+        data.push(buff[roundedPosition]);
+
+        position += speed;
+        roundedPosition = Math.round(position);
+    }
+
+    var result = aCtx.createBuffer(1,data.length, aCtx.sampleRate);
+    var resultData = result.getChannelData(0);
+
+    for(let x = 0; x < data.length; x++) {
+        resultData[x] = data[x];
+    }
+
+    console.log(resultData);
+    
+    return result;
+}
+
 function comp(buff,threshold, attack, sustain, release, ratio, gain) {
     var result = aCtx.createBuffer(1,buff.length, aCtx.sampleRate);
     var resultData = result.getChannelData(0);

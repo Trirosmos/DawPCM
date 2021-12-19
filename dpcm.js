@@ -48,8 +48,12 @@ function toAudio(dpcm) {
 
     for(x = 0; x < dpcm.data.length * 8; x++) {
         deltaT += dpcm.sampleTime;
-        if(dpcm.data[byte] & (1 << bit)) dCounter += (2/64);
-        else dCounter -= (2/64);
+        if(dpcm.data[byte] & (1 << bit)) {
+            dCounter += (2/64);
+        }
+        else {
+            dCounter -= (2/64);
+        }
 
         if(dCounter < -1) dCounter = -1;
         if(dCounter > 1) dCounter = 1;

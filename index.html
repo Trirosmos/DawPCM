@@ -14,9 +14,8 @@
 
         /*
             TODO:
-            - Adicionar compressor.
-            - Adicionar repitcher.
-            - Undo/Redo/Salvar
+            - Undo/Redo/Salvar.
+            - Adicionar botões pra fazer fade-in/fade-out.
         */
 
         document.body.style.height = window.innerHeight + "px";
@@ -59,7 +58,7 @@
         var fxSettingsDisplay;
         var waveCanvas;
         var dmc;
-        var peakDetect = []
+        //var peakDetect = []
 
         function createChain() {
             chains.push({
@@ -143,6 +142,19 @@
             }
         }
 
+        function addRepitch(value) {
+            if(chains[currentChain] !== undefined) {
+                var repitch = {
+                    name: "Repitcher",
+                    type: "repitch",
+                    speed: value
+                };
+            
+                chains[currentChain].effects.push(repitch);
+                updateUI()
+            }
+        }
+
         function processEffect(buff,effect) {
             switch(effect.type) {
                 case "iir":
@@ -169,6 +181,10 @@
 
                 case "comp":
                     return comp(buff,effect.threshold,effect.attack,effect.sustain,effect.release,effect.ratio,effect.gain);
+                break;
+
+                case "repitch":
+                    return repitch(buff,effect.speed);
                 break;
             }
         }
@@ -363,7 +379,7 @@
 
             var fxSelect = createE("select");
             sizePos(fxSelect,25,84,30,15);
-            createOption(fxSelect,["IIR Filter", "Gain", "Brickwall Limiter", "Waveshaping Distortion", "Compressor"]);
+            createOption(fxSelect,["IIR Filter", "Gain", "Brickwall Limiter", "Waveshaping Distortion", "Compressor", "Repitcher"]);
             fxDisplay.appendChild(fxSelect);
 
             var addFX = createE("button");
@@ -393,6 +409,10 @@
                     case "Compressor":
                         addComp(0,20,100,20,2,0);
                     break;
+
+                    case "Repitcher":
+                        addRepitch(1);
+                    break;
                 }
             }
 
@@ -421,7 +441,7 @@
             settings.appendChild(exportDPCM);
 
             createChain();
-            addComp(-15,20,100,20,2,0);
+            addRepitch(0.5);
 
             updateUI();
         })()
@@ -469,7 +489,7 @@
 
             dmc = dpcmData.data;
             
-            var decoded = toAudio(dpcmData);
+            decoded = toAudio(dpcmData);
             
             var source = aCtx.createBufferSource();
             source.buffer = decoded;
@@ -604,6 +624,8 @@
         window.addEventListener("mousedown",function(e){
             //e.preventDefault();
 
+            console.log(keys.shift.down);
+
             mouse.x = e.x;
             if(e.button === 0) mouse.left = true;
 
@@ -614,10 +636,19 @@
                     y: e.pageY - rect.top
                 }
 
-                cursor = Math.round(clickRelative.x);
+                if(keys.shift.down) {
+                    selection.selected = true;
+                    selection.start = cursor;
+                    selection.end = Math.round(clickRelative.x);
 
-                selection.selected = selection.active = true;
-                selection.start = Math.round(clickRelative.x);
+                    updateWaveCanvas();
+                }
+                else {
+                    cursor = Math.round(clickRelative.x);
+                    
+                    selection.selected = selection.active = true;
+                    selection.start = Math.round(clickRelative.x);
+                }
             }
             else {
                 if(e.button === 2) selection.selected = selection.active = false;
@@ -638,7 +669,7 @@
                     y: e.pageY - rect.top
                 }
                 
-                selection.end = Math.round(clickRelative.x);
+                if(selection.active) selection.end = Math.round(clickRelative.x);
             }
             else if(selection.selected === true) selection.active = false;
 
@@ -647,7 +678,7 @@
                 selection.active = false;
                 
                 updateWaveCanvas();
-            } 
+            }
 
             selection.active = false;
         });
