@@ -17,6 +17,9 @@
             - Undo/Redo/Salvar.
             - Menu de opções.
             - Compressor mais simples.
+            - Opções de zoom pro visualizador de onda.
+            - Tornar possível alterar valor de samples diretamente.
+            - Consertar seleções quando você solta o mouse fora do canvas.
         */
 
         document.body.style.height = window.innerHeight + "px";
@@ -244,6 +247,19 @@
             canvas.height = 300;
             canvas.width = 1000;
             waveDisplay.appendChild(canvas);
+
+            var tickCanvas = createE("canvas");
+            ctx = tickCanvas.getContext("2d");
+            waveDisplay.appendChild(tickCanvas);
+            tickCanvas.height = 50;
+            tickCanvas.width = 400;
+            ctx.fillStyle = "red";
+            tickCanvas.style.position = "fixed";
+            tickCanvas.style.top = "42.6%";
+            tickCanvas.style.left = "28.2%";
+            tickCanvas.style.height = "300 px";
+            tickCanvas.style.width = "200 px";
+            ctx.font = "20px Arial";
 
             var waveActionText = createE("select");
             sizePos(waveActionText,28.5,50.3,4,4);
@@ -607,7 +623,45 @@
             source.buffer = decoded;
             
             source.connect(aCtx.destination);
-            if(!noSound) source.start();
+            if(!noSound) {
+                var antes = aCtx.currentTime;
+
+                var updateVUtimeout = setInterval(function(){
+                    var agora = aCtx.currentTime;
+                    var interval = (agora - antes) * 1000;
+                    var intervalInSamples = Math.round(interval * (aCtx.sampleRate / 1000));
+                    var loudest = 0;
+                    var finalAudio = decoded.getChannelData(0); 
+
+                    ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+
+                    ctx.fillText("VU: ",10,33);
+
+                    for(let x = intervalInSamples; x < intervalInSamples + 100; x++) {
+                        if(x < decoded.length) {
+                            if(Math.abs(finalAudio[x]) > loudest) loudest = Math.abs(finalAudio[x])
+                        }
+                    }
+
+                    for(let x = 0; x < 16; x++) {
+                        ctx.strokeRect((x * 20) + 58,13,17,24);
+                    }
+
+                    for(let x = 0; x < Math.round(loudest * 16); x++) {
+                        ctx.fillRect((x * 20) + 58,15,15,20);
+                    }
+
+
+                },16);
+
+                source.onended = function(){
+                    clearInterval(updateVUtimeout);    
+                }
+
+                source.start();
+                
+
+            }
 
             updateWaveCanvas();
         }
