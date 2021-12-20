@@ -30,4 +30,5 @@ Most of the functionality of the waveform editor is onl available through the us
 - Shift+Click: select all samples between cursor and click position.
 - Delete: deletes selected samples
 - Ctrl+Delete: deletes all but the selected samples
+- Home: move cursor to the start of the sample and scroll back.
 - Ctrl+Z: undo
