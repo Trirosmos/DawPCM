@@ -19,8 +19,6 @@ function updateUndoBuffer() {
     if(undoBuffer.length > 10) {
         undoBuffer.splice(0,1);
     }
-    
-    console.log(undoBuffer);
 }
 
 function getCurrentFX() {
