@@ -287,11 +287,14 @@ function displayLimiter() {
     threshold.min = "-100";
     threshold.max = "0";
     threshold.value = String(effect.threshold);
-    sizePos(threshold,25,24,45,40);
+    sizePos(threshold,25,24,40,40);
     
-    var thresholdValueText = createE("p");
-    thresholdValueText.innerHTML = String(effect.threshold) + " dB";
-    sizePos(thresholdValueText,80,35,20,40);
+    var thresholdInput = createE("input");
+    thresholdInput.type = "number";
+    thresholdInput.value = (effect.threshold);
+    thresholdInput.min = -100;
+    thresholdInput.max = 0;
+    sizePos(thresholdInput,70,39,15,10);
     
     threshold.onchange = function() {
         var effect = getCurrentFX();
@@ -299,19 +302,31 @@ function displayLimiter() {
     
         if(effect.type === "limiter") {
             effect.threshold = Number(threshold.value);
-            thresholdValueText.innerHTML = String(effect.threshold) + " dB";
+            thresholdInput.value = effect.threshold;
+            play(!autoPlay);
+            updateUndoBuffer();
+        }
+    }
+
+    thresholdInput.onchange = function() {
+        var effect = getCurrentFX();
+        if(effect === undefined) return;
+
+        if(effect.type === "limiter") {
+            effect.threshold = Number(thresholdInput.value);
+            threshold.value = effect.threshold;
             play(!autoPlay);
             updateUndoBuffer();
         }
     }
     
     var thresholdText = createE("p");
-    thresholdText.innerHTML = "Threshold: ";
+    thresholdText.innerHTML = "Threshold (dB): ";
     sizePos(thresholdText,5,35,20,40);
     
     fxSettingsDisplay.appendChild(threshold);
     fxSettingsDisplay.appendChild(thresholdText);
-    fxSettingsDisplay.appendChild(thresholdValueText);
+    fxSettingsDisplay.appendChild(thresholdInput);
 }
 
 function displayCompressor() {

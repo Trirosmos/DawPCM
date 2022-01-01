@@ -64,6 +64,7 @@
         var fxSettingsDisplay;
         var waveCanvas;
         var dmc;
+        var source;
 
 
         function createChain() {
@@ -81,7 +82,8 @@
                 var gain = {
                     name: "Gain",
                     type: "gain",
-                    value: value
+                    value: value,
+                    active: true
                 };
 
                 chains[currentChain].effects.push(gain);
@@ -96,7 +98,8 @@
                     type: "iir",
                     cutoff: cutoff,
                     lowpass: lowpass,
-                    order: order
+                    order: order,
+                    active: true
                 };
         
                 chains[currentChain].effects.push(iir);
@@ -110,7 +113,8 @@
                     name: "Waveshaping Distortion",
                     type: "waveshape",
                     algo: algo,
-                    hardness: value
+                    hardness: value,
+                    active: true
                 };
         
                 chains[currentChain].effects.push(waveshape);
@@ -123,7 +127,8 @@
                 var limiter = {
                     name: "Brickwall Limiter",
                     type: "limiter",
-                    threshold: value
+                    threshold: value,
+                    active: true
                 };
         
                 chains[currentChain].effects.push(limiter);
@@ -141,7 +146,8 @@
                     sustain: sustain,
                     release: release,
                     ratio: ratio,
-                    gain: gain
+                    gain: gain,
+                    active: true
                 };
             
                 chains[currentChain].effects.push(comp);
@@ -154,7 +160,8 @@
                 var repitch = {
                     name: "Repitcher",
                     type: "repitch",
-                    speed: value
+                    speed: value,
+                    active: true
                 };
             
                 chains[currentChain].effects.push(repitch);
@@ -201,8 +208,10 @@
             var currentBuffer;
 
             for(let i = 0; i < effects.length; i++) {
-                if(currentBuffer) currentBuffer = processEffect(currentBuffer.getChannelData(0),effects[i]);
-                else if(buffer) currentBuffer = processEffect(buffer.getChannelData(0),effects[i]);
+                if(effects[i].active) {
+                    if(currentBuffer) currentBuffer = processEffect(currentBuffer.getChannelData(0),effects[i]);
+                    else if(buffer) currentBuffer = processEffect(buffer.getChannelData(0),effects[i]);
+                }
             }
 
             if(currentBuffer === undefined) {
@@ -429,12 +438,35 @@
             sizePos(muteText,60,84,15,5);
             chainDisplay.appendChild(muteText);
 
+            var activateFX = createE("input");
+            activateFX.type = "checkbox";
+            sizePos(activateFX,85,92,5,5);
+            fxDisplay.appendChild(activateFX);
+            activateFX.onchange = function() {
+                var effect = getCurrentFX();
+                if(effect === undefined) return;
+            
+                effect.active = !activateFX.checked;
+            }
+
+            var activateFXText = createE("p");
+            activateFXText.innerHTML = "Mute";
+            sizePos(activateFXText,83,80,15,10);
+            fxDisplay.appendChild(activateFXText);
+
+            activateFX.style.font = "5px Arial";
+
             fxListDisplay = createE("select");
             sizePos(fxListDisplay,0,0,100,83);
             fxDisplay.appendChild(fxListDisplay);
             fxListDisplay.onchange = function() {
                 currentFX = fxListDisplay.selectedIndex;
                 updateUI();
+
+                var effect = getCurrentFX();
+                if(effect === undefined) return;
+
+                activateFX.checked = !effect.active;
             }
 
             var fxSelect = createE("select");
@@ -490,8 +522,8 @@
             fxDisplay.appendChild(deleteFX);
 
             var moveFXUp = createE("button");
-            moveFXUp.innerHTML = "Move up";
-            sizePos(moveFXUp,70,84,25,7);
+            moveFXUp.innerHTML = "Up";
+            sizePos(moveFXUp,65,84,15,7);
             fxDisplay.appendChild(moveFXUp);
             moveFXUp.onclick = function() {
                 var effect = getCurrentFX();
@@ -508,8 +540,8 @@
             }
 
             var moveFXDown = createE("button");
-            moveFXDown.innerHTML = "Move down";
-            sizePos(moveFXDown,70,92,25,7);
+            moveFXDown.innerHTML = "Down";
+            sizePos(moveFXDown,65,92,15,7);
             fxDisplay.appendChild(moveFXDown);
             moveFXDown.onclick = function() {
                 var effect = getCurrentFX();
@@ -592,6 +624,10 @@
             var finalOutput;
             var maximumLength = 0;
 
+            if(source !== undefined) {
+                source.stop();
+            }
+
             for(let x = 0; x < chains.length; x++) {
                 if(chains[x].muted) continue;
                 var partial = processChain(chains[x]);
@@ -619,8 +655,11 @@
             
             decoded = toAudio(dpcmData);
             
-            var source = aCtx.createBufferSource();
+            source = aCtx.createBufferSource();
             source.buffer = decoded;
+            source.onended = function() {
+                source = undefined;
+            }
             
             source.connect(aCtx.destination);
             if(!noSound) {
